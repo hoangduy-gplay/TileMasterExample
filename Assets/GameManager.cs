@@ -12,8 +12,9 @@ public class GameManager : SerializedMonoBehaviour
     public static GameManager Intance;
     public int[,] array = new int[5, 5];
     public List<CountIdTile> lsCoutnTile;
-    public List<TileWithID> lstitle;
+    public List<Title> lstitle;
     public List<GameObject> lsPoint;
+    public List<Title> lsTilesComplete;
     public GameObject bottom;
     public Title go;
     public Transform canvas;
@@ -53,6 +54,7 @@ public class GameManager : SerializedMonoBehaviour
                 var tile = Instantiate(go, new Vector3(i + 2.5f, j + 10, 0) * space, Quaternion.identity).GetComponent<Title>();
                 tile.transform.SetParent(map.transform);
                 tile.id = array[i, j];
+                tile.gameObject.name = "Tile " + tile.id;
 
 
             }
@@ -75,16 +77,16 @@ public class GameManager : SerializedMonoBehaviour
     public void CheckAndDeleteListTileBottom(int param)
     {
         var temp = -1;
-        for (int i = lstitle.Count - 1; i >= 0; i--)
+        for (int i = lsTilesComplete.Count - 1; i >= 0; i--)
         {
-            if (lstitle[i].id == param)
+            if (lsTilesComplete[i].id == param)
             {
-                if (CountTileId(lstitle[i].id).coutn == 3)
+                if (CountTileId(lsTilesComplete[i].id).coutn == 3)
                 {
-                    temp = lstitle[i].id;
-                    lstitle[i].willbeDelete = true;
-                    //Destroy(lstitle[i].title.gameObject);
-                    //lstitle.Remove(lstitle[i]);
+                    temp = lsTilesComplete[i].id;
+                    //  lsTilesComplete[i].willbeDelete = true;
+                    Destroy(lstitle[i].gameObject);
+                    lstitle.Remove(lstitle[i]);
                 }
             }
         }
@@ -92,19 +94,23 @@ public class GameManager : SerializedMonoBehaviour
         {
             CountTileId(temp).coutn = 0;
         }
-        MoveTile();
+
     }
 
-    public void MoveTile()
+    public void MoveTileInListComplete(Action action)
     {
-
+        bool temp = false;
         for (int i = 0; i < lstitle.Count; i++)
         {
-          
-            lstitle[i].title.transform.DOMove(lsPoint[i].transform.position, 1).OnComplete(delegate
+
+            lstitle[i].transform.DOMove(lsPoint[i].transform.position, 1).OnComplete(delegate
             {
-               
-                CheckDeleteTest();
+                if (!temp)
+                {
+                    action?.Invoke();
+                    temp = true;
+                }
+
 
             });
 
@@ -116,26 +122,42 @@ public class GameManager : SerializedMonoBehaviour
         {
             if (lstitle[i].willbeDelete == true)
             {
-                Destroy(lstitle[i].title.gameObject);
+                Destroy(lstitle[i].gameObject);
                 lstitle.Remove(lstitle[i]);
-                MoveTile();
+                //   MoveTile();
+            }
+        }
+    }
+    public void AddTile(Title title)
+    {
+        lsTilesComplete.Add(title);
+        CountTileId(title.id).coutn += 1;
+        if (CountTileId(title.id).coutn == 3)
+        {
+            for (int i = lsTilesComplete.Count - 1; i >= 0; i--)
+            {
+                if (lsTilesComplete[i].id == title.id)
+                {
+                    Destroy(lsTilesComplete[i].gameObject);
+                    lsTilesComplete.Remove(lsTilesComplete[i]);
+                    CountTileId(title.id).coutn = 0;
+                }
+            }
+            for (int i = lstitle.Count - 1; i >= 0; i--)
+            {
+                if (lstitle[i].id == title.id)
+                {
+                    Destroy(lstitle[i].gameObject);
+                    lstitle.Remove(lstitle[i]);
+                    MoveTileInListComplete(delegate { });
+                }
             }
         }
     }
 
-
 }
 
-[Serializable]
-public class TileWithID
-{
-    public int id;
-    public int count;
-    public Title title;
-    public int index;
-    public bool willbeDelete;
-    public bool wasFly;
-}
+
 [Serializable]
 public class CountIdTile
 {

@@ -4,5 +4,5 @@ using UnityEngine;
 
 public class ListBottom : MonoBehaviour
 {
-    public List<TileWithID> tileWithIDs;
+
 }
