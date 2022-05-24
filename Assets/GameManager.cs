@@ -138,17 +138,19 @@ public class GameManager : SerializedMonoBehaviour
             {
                 if (lsTilesComplete[i].id == title.id)
                 {
-                    Destroy(lsTilesComplete[i].gameObject);
+                    //Destroy(lsTilesComplete[i].gameObject);
+                    lsTilesComplete[i].willbeDelete = true;
                     lsTilesComplete.Remove(lsTilesComplete[i]);
-                    CountTileId(title.id).coutn = 0;
+
                 }
             }
             for (int i = lstitle.Count - 1; i >= 0; i--)
             {
-                if (lstitle[i].id == title.id)
+                if (lstitle[i].willbeDelete)
                 {
                     Destroy(lstitle[i].gameObject);
                     lstitle.Remove(lstitle[i]);
+                    CountTileId(title.id).coutn = 0;
                     MoveTileInListComplete(delegate { });
                 }
             }
