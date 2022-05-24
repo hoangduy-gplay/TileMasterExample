@@ -6,13 +6,15 @@ using UnityEngine.EventSystems;
 using System;
 using DG.Tweening;
 using UnityEngine.UI;
+using System.Linq;
+using UnityEngine.Events;
 
 public class GameManager : SerializedMonoBehaviour
 {
     public static GameManager Intance;
     public int[,] array = new int[5, 5];
     public List<CountIdTile> lsCoutnTile;
-    public List<Title> lstitle;
+    public List<TitleData> lstitle;
     public List<GameObject> lsPoint;
     public List<Title> lsTilesComplete;
     public GameObject bottom;
@@ -23,6 +25,8 @@ public class GameManager : SerializedMonoBehaviour
     private int spaceCell = 100;
     Vector3 pos = new Vector3(350, 0, 0);
 
+    Coroutine test = null;
+    private bool listIsMoving;
     private void Start()
     {
         Intance = this;
@@ -61,101 +65,113 @@ public class GameManager : SerializedMonoBehaviour
         }
 
     }
-    public CountIdTile CountTileId(int id)
+    public bool HasSame3(int id)
     {
-        foreach (CountIdTile item in lsCoutnTile)
+        int numSame = 0;
+        foreach (var item in lstitle)
         {
-            if (id == item.id)
+            if (item.titleObject.isCome && id == item.id)
             {
-                return item;
+                numSame++;
             }
         }
-        return null;
+        if (numSame >= 3)
+            return true;
 
-    }
-
-    public void CheckAndDeleteListTileBottom(int param)
-    {
-        var temp = -1;
-        for (int i = lsTilesComplete.Count - 1; i >= 0; i--)
-        {
-            if (lsTilesComplete[i].id == param)
-            {
-                if (CountTileId(lsTilesComplete[i].id).coutn == 3)
-                {
-                    temp = lsTilesComplete[i].id;
-                    //  lsTilesComplete[i].willbeDelete = true;
-                    Destroy(lstitle[i].gameObject);
-                    lstitle.Remove(lstitle[i]);
-                }
-            }
-        }
-        if (temp != -1)
-        {
-            CountTileId(temp).coutn = 0;
-        }
+        return false;
 
     }
 
     public void MoveTileInListComplete(Action action)
     {
-        bool temp = false;
-        for (int i = 0; i < lstitle.Count; i++)
-        {
+        listIsMoving = true;
+        int countLstitle = lstitle.Count;
 
-            lstitle[i].transform.DOMove(lsPoint[i].transform.position, 1).OnComplete(delegate
+        for (int i = 0; i < countLstitle; i++)
+        {
+            lstitle[i].isSorting = false;
+        }
+
+        for (int i = 0; i < countLstitle; i++)
+        {
+            int index = i;
+
+            //if (index == indexMove)
+            //    continue;
+            if (lstitle[index].titleObject.isCome)
             {
-                if (!temp)
+                //Sap xep cac title o duoi
+                if (Vector2.Distance(lstitle[index].titleObject.transform.position,
+                      lsPoint[index].transform.position) > 0.1f)
                 {
-                    action?.Invoke();
-                    temp = true;
+                    lstitle[index].isSorting = true;
+                    lstitle[index].titleObject.transform.DOKill();
+                    lstitle[index].titleObject.transform.DOMove(lsPoint[index].transform.position, 0.25f).OnComplete(delegate
+                    {
+                        lstitle[index].isSorting = false;
+                    });
                 }
 
-
-            });
-
+            }
         }
+
+        if (m_WaitForUtil != null)
+            StopCoroutine(m_WaitForUtil);
+
+        m_WaitForUtil = WaitForUtil(() =>
+        {
+            action?.Invoke();
+        }, () => IsAllTitleSortDone() == true);
+        StartCoroutine(m_WaitForUtil);
     }
-    public void CheckDeleteTest()
+
+    /// <summary>
+    /// Cac title ow duoi da sorting xong het chua
+    /// </summary>
+    /// <returns></returns>
+    private bool IsAllTitleSortDone()
     {
         for (int i = 0; i < lstitle.Count; i++)
         {
-            if (lstitle[i].willbeDelete == true)
-            {
-                Destroy(lstitle[i].gameObject);
-                lstitle.Remove(lstitle[i]);
-                //   MoveTile();
-            }
+            int index = i;
+            if (lstitle[index].isSorting)
+                return false;
         }
+
+        return true;
     }
+    private IEnumerator m_WaitForUtil;
+    private IEnumerator WaitForUtil(UnityAction action, System.Func<bool> condition)
+    {
+        yield return new WaitUntil(condition);
+        action?.Invoke();
+    }
+
     public void AddTile(Title title)
     {
         lsTilesComplete.Add(title);
-        CountTileId(title.id).coutn += 1;
-        if (CountTileId(title.id).coutn == 3)
+        if (HasSame3(title.id))
         {
+            List<Title> deleteLst = new List<Title>();
             for (int i = lsTilesComplete.Count - 1; i >= 0; i--)
             {
-                if (lsTilesComplete[i].id == title.id)
+                int index = i;
+                if (lsTilesComplete[index].id == title.id)
                 {
-                    //Destroy(lsTilesComplete[i].gameObject);
-                    lsTilesComplete[i].willbeDelete = true;
-                    lsTilesComplete.Remove(lsTilesComplete[i]);
+                    lsTilesComplete[index].willbeDelete = true;
+                    deleteLst.Add(lsTilesComplete[index]);
+                }
+            }
+            lsTilesComplete.RemoveAll(x => x.id == title.id);
+            for (int i = 0; i < deleteLst.Count; i++)
+                Destroy(deleteLst[i].gameObject);
 
-                }
-            }
-            for (int i = lstitle.Count - 1; i >= 0; i--)
-            {
-                if (lstitle[i].willbeDelete)
-                {
-                    Destroy(lstitle[i].gameObject);
-                    lstitle.Remove(lstitle[i]);
-                    CountTileId(title.id).coutn = 0;
-                    MoveTileInListComplete(delegate { });
-                }
-            }
+
+            lstitle.RemoveAll(x => x.titleObject.willbeDelete == true);
+            MoveTileInListComplete(delegate { });
         }
     }
+
 
 }
 
