@@ -34,7 +34,6 @@ public class Title : MonoBehaviour
 
     private void HandleOnClick()
     {
-
         SortTitle();
     }
     private void SortTitle()
